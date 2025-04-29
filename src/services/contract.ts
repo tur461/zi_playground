@@ -1,6 +1,6 @@
 import { SorobanContextType } from "@soroban-react/core";
 import { Asset } from "@stellar-asset-lists/sdk";
-import { nativeToScVal, scValToNative, xdr } from "@stellar/stellar-sdk";
+import { Address, nativeToScVal, scValToNative, xdr } from "@stellar/stellar-sdk";
 
 import { contractInvoke } from "@/lib/contract-fe";
 import { accountToScVal, scValToNumber } from "@/utils";
@@ -109,7 +109,8 @@ export const addLiquidity = async (
     signAndSend: true,
     reconnectAfterTx: false,
   });
-  return scValToNative(response as any);
+  console.log("addLiquidity response", response);
+  return response;
 };
 
 export const getTokenInfo = async (
@@ -169,18 +170,18 @@ export const approveSpending = async (
   amount: bigint,
   expiration: number,
 ) => {
-  const spender = liquidityContractId;
+  const spender = Address.fromString(liquidityContractId).toScVal();
+  const approverScVal = Address.fromString(approver).toScVal();
   const expiry = await getSeqNumber(sorobanContext) + expiration;
-  console.log("approving spending tokenAddr", tokenAddress, "approver", approver, "spender", spender, "amount", amount, "expiry", expiry);
   const response = await contractInvoke({
     contractAddress: tokenAddress,
     method: "approve",
     signAndSend: true,
     args: [
-      accountToScVal(approver), // from
-      accountToScVal(spender), // spender
-      nativeToScVal(amount), // amount
-      nativeToScVal(expiry) // expiration
+      approverScVal, // from
+      spender, // spender
+      nativeToScVal(amount, { type: "i128" }), // amount
+      nativeToScVal(expiry, { type: "u32" }) // expiration
     ],
     sorobanContext,
     reconnectAfterTx: false,

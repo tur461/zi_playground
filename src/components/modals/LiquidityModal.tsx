@@ -9,7 +9,7 @@ import { addLiquidity, approveSpending, getReserves, getTokenInfo, hasEnoughAllo
 import { useSorobanReact } from "@soroban-react/core";
 import useWallets from "@/hooks/useWallets";
 import { accountToScVal } from "@/utils";
-import { nativeToScVal } from "@stellar/stellar-sdk";
+import { Address, nativeToScVal } from "@stellar/stellar-sdk";
 
 interface Token {
     address: string;
@@ -129,11 +129,11 @@ const LiquidityModal: FC<ModalProps> = (props) => {
                 
     
                 const addLiq = [
-                    accountToScVal(address),
-                    nativeToScVal(desired_a),
-                    nativeToScVal(min_a),
-                    nativeToScVal(desired_b),
-                    nativeToScVal(min_b),
+                    Address.fromString(address).toScVal(),
+                    nativeToScVal(desired_a, {type: "i128"}),
+                    nativeToScVal(min_a, {type: "i128"}),
+                    nativeToScVal(desired_b, {type: "i128"}),
+                    nativeToScVal(min_b, {type: "i128"}),
                 ];
     
                 const respose = await addLiquidity(sorobanContext, addLiq);
