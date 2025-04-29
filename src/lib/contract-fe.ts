@@ -18,6 +18,7 @@ export async function contractInvoke({
   reconnectAfterTx = true,
   timeoutSeconds = 20,
 }: InvokeArgs & { memo?: string }) {
+  
   const { server, address, activeChain, activeConnector } = sorobanContext;
   if (!activeChain) {
     throw new Error("No active Chain");

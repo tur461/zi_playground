@@ -6,6 +6,7 @@ import { contractInvoke } from "@/lib/contract-fe";
 import { accountToScVal, scValToNumber } from "@/utils";
 
 const airdropContractId = process.env.NEXT_PUBLIC_AIRDROP_CONTRACT_ID!;
+const liquidityContractId = process.env.NEXT_PUBLIC_LIQUIDITY_POOL_CONTRACT_ID!;
 
 export async function tokenBalance(
   sorobanContext: SorobanContextType,
@@ -36,7 +37,7 @@ export async function tokenDecimals(
     method: "decimals",
     sorobanContext,
   });
-
+  
   return scValToNumber(response);
 }
 
@@ -82,3 +83,127 @@ export const sendAsset = async (
     reconnectAfterTx: false,
   })
 };
+
+
+export const getReserves = async (
+  sorobanContext: SorobanContextType
+) => {
+  const response = await contractInvoke({
+    contractAddress: liquidityContractId,
+    method: "get_reserves",
+    args: [],
+    sorobanContext,
+  });
+  return scValToNative(response as any);
+};
+
+export const addLiquidity = async (
+  sorobanContext: SorobanContextType,
+  args: Array<any>
+) => {
+  const response = await contractInvoke({
+    contractAddress: liquidityContractId,
+    method: "add_liquidity",
+    args,
+    sorobanContext,
+    signAndSend: true,
+    reconnectAfterTx: false,
+  });
+  return scValToNative(response as any);
+};
+
+export const getTokenInfo = async (
+  sorobanContext: SorobanContextType,
+  tokenAddress: string,
+  account: string
+) => {
+  let response = await contractInvoke({
+    contractAddress: tokenAddress,
+    method: "decimals",
+    args: [],
+    sorobanContext,
+  });
+  const decimal = scValToNumber(response);
+
+  response = await contractInvoke({
+    contractAddress: tokenAddress,
+    method: "symbol",
+    args: [],
+    sorobanContext,
+  });
+  const symbol = scValToNative(response as any);
+
+  response = await contractInvoke({
+    contractAddress: tokenAddress,
+    method: "balance",
+    args: [accountToScVal(account)],
+    sorobanContext,
+  });
+  const balance = scValToNative(response as any);
+  
+  return {
+    address: tokenAddress,
+    symbol,
+    decimal,
+    balance
+  };
+}
+
+async function getSeqNumber(sorobanContext: SorobanContextType): Promise<number> {
+  const { server } = sorobanContext;
+
+  if (!server) {
+    throw new Error("Not connected to a Soroban server");
+  }
+
+  const latestLedger = await server.getLatestLedger();
+  const sequence = latestLedger.sequence;
+  console.log("Sequence number", sequence);
+  return sequence;
+}
+
+export const approveSpending = async (
+  sorobanContext: SorobanContextType,
+  tokenAddress: string,
+  approver: string,
+  amount: bigint,
+  expiration: number,
+) => {
+  const spender = liquidityContractId;
+  const expiry = await getSeqNumber(sorobanContext) + expiration;
+  console.log("approving spending tokenAddr", tokenAddress, "approver", approver, "spender", spender, "amount", amount, "expiry", expiry);
+  const response = await contractInvoke({
+    contractAddress: tokenAddress,
+    method: "approve",
+    signAndSend: true,
+    args: [
+      accountToScVal(approver), // from
+      accountToScVal(spender), // spender
+      nativeToScVal(amount), // amount
+      nativeToScVal(expiry) // expiration
+    ],
+    sorobanContext,
+    reconnectAfterTx: false,
+  });
+  return response as any;
+}
+
+export const hasEnoughAllowance = async (
+  sorobanContext: SorobanContextType,
+  tokenAddress: string,
+  approver: string,
+  amount: bigint,
+) => {
+  const spender = liquidityContractId;
+  const response = await contractInvoke({
+    contractAddress: tokenAddress,
+    method: "allowance",
+    args: [
+      accountToScVal(approver),
+      accountToScVal(spender),
+    ],
+    sorobanContext,
+  });
+  console.log("allowance", scValToNative(response as any), scValToNative(response as any) >= amount);
+  return (scValToNative(response as any) >= amount);
+}
