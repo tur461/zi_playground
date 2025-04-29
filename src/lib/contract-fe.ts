@@ -56,7 +56,6 @@ export async function contractInvoke({
     .setTimeout(StellarSdk.TimeoutInfinite);
   if (memo) tx = tx.addMemo(StellarSdk.Memo.text(memo));
   const txn = tx.build();
-
   const simulated = await server.simulateTransaction(txn);
   if (Api.isSimulationError(simulated)) {
     throw new Error(simulated.error);
